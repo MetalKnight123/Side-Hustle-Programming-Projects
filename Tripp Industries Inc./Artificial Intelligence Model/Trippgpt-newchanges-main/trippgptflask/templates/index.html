@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TrippGPT - built off chatgpt2.0's source code </title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
+        form { margin-bottom: 20px; }
+        input[type=text] { width: 300px; padding: 10px; }
+        input[type=submit] { padding: 10px 20px; }
+        .chatbox { background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <h1>TrippGPT - An AI model built off of chatgpt2.0's source code</h1>
+    <form method="POST">
+        <input type="text" name="message" placeholder="Say something..." required>
+        <input type="submit" value="Send">
+    </form>
+
+    {% if user_input %}
+    <div class="chatbox">
+        <p><strong>You:</strong> {{ user_input }}</p>
+        <p><strong>AI:</strong> {{ ai_response }}</p>
+    </div>
+    {% endif %}
+</body>
+</html>

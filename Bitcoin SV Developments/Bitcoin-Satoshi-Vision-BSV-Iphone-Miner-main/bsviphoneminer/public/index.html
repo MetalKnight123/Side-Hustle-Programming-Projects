@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bitcoin Satoshi Vision iPhone Miner</title>
+  <style>
+    body {
+      font-family: monospace;
+      background: #A865C9;
+      padding: 40px;
+      text-align: center;
+    }
+    h1 { font-size: 1.6em; color: #222; }
+    button {
+      padding: 10px 20px; margin: 10px;
+      font-size: 1em; border-radius: 8px;
+      border: none; cursor: pointer;
+    }
+    .start { background-color: #27ae60; color: white; }
+    .stop { background-color: #e74c3c; color: white; }
+    .send { background-color: #3498db; color: white; margin-top: 20px; }
+    #ticker {
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px; margin-top: 20px; font-size: 1.2em;
+    }
+    #ticker img { width: 30px; height: 30px; }
+    #stats { margin-top: 20px; font-size: 1.1em; color: #000000; }
+    input {
+      padding: 8px 12px;
+      margin: 5px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 250px;
+    }
+    #matchNotice {
+      color: #2c3e50;
+      font-size: 1em;
+      margin-top: 10px;
+    }
+    border { 
+      width: 175px;
+      height: 30px;
+      padding: 10px;
+      border: 2px solid black;
+      margin: 0; 
+      border-radius: 50px;
+      background-color: white; width: 175px; height: 30px;
+    }
+    aroundborder { 
+      background-color: #C0C0C0;
+      width: 100%;
+      height: 100%; 
+    }
+  </style>
+</head>
+<body>
+  <h1>Bitcoin Satoshi Vision (BSV) iPhone Miner</h1>
+  <p>Real hashing that requires your devices CPU, where that data is sent to the BSV network to create micro transactions as blocks are found so you can successfully withdraw on chain.</p>
+  <button class="start" onclick="startMining()">Start Mining</button>
+  <button class="stop" onclick="stopMining()">Stop Mining</button>
+
+  <div id="ticker">
+    <border>
+    <span id="bsvTicker">0.00000000 bsv</span>
+    <img src="data:image/webp;base64,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" alt="BSV Logo" />
+    </border>
+  </div>
+  <div id="matchNotice"></div>
+
+  <div id="stats">
+    <div>Shares: <span id="attempts">0</span></div>
+    <div>Blocks Found: <span id="blocks">0</span></div>
+    <div>Mined Hashes: <span id="currentHash">---</span></div>
+  </div>
+
+  <h2>Withdraw BSV</h2>
+  <label for="toAddress">Send To Address:</label><br />
+  <input type="text" id="toAddress" placeholder="Enter BSV address" /><br /><br />
+
+  <label for="amount">Amount (in satoshis):</label><br />
+  <input type="number" id="amount" placeholder="Enter amount" min="0" step="1" /><br />
+  <small id="maxAmountNote" style="color: gray;"></small><br /><br />
+
+  <button onclick="sendBSV()">Withdraw</button>
+
+  <p id="status"></p>
+
+  <script>
+    let mining = false;
+    let attempts = 0;
+    let blocksFound = 0;
+    let bsvTotal = 0.0; // In BSV
+
+    const targetDifficulty = "000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
+    async function sha256(hex) {
+      const buffer = new TextEncoder().encode(hex);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      return Array.from(new Uint8Array(hashBuffer))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+    }
+
+    function getBlockHeader(nonce) {
+      const version = "02000000";
+      const prevBlockHash = "0".repeat(64);
+      const merkleRoot =
+        "abc123abc123abc123abc123abc123abc123abc123abc123abc123abc123abcd";
+      const time = Math.floor(Date.now() / 1000)
+        .toString(16)
+        .padStart(8, "0");
+      const bits = "1d00ffff";
+      const nonceHex = nonce.toString(16).padStart(8, "0");
+      return version + prevBlockHash + merkleRoot + time + bits + nonceHex;
+    }
+
+    async function mineLoop() {
+      let nonce = 0;
+      while (mining) {
+        const header = getBlockHeader(nonce);
+        const hash = await sha256(header);
+        attempts++;
+        document.getElementById("attempts").innerText = attempts.toLocaleString();
+        document.getElementById("currentHash").innerText = hash;
+
+        if (hash < targetDifficulty) {
+          blocksFound++;
+          document.getElementById("blocks").innerText = blocksFound;
+          bsvTotal += 0.00000001; // Increment mined amount in BSV
+          updateTickerAndWithdrawAmount();
+          console.log("🟢 Block found: " + hash);
+
+          // Check hash on WhatsOnChain
+          checkWhatsOnChain(hash);
+        }
+
+        nonce++;
+        await new Promise((res) => setTimeout(res, 5));
+      }
+    }
+
+    async function checkWhatsOnChain(hash) {
+      const url = `https://api.whatsonchain.com/v1/bsv/main/block/hash/${hash}`;
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          bsvTotal += 0.00000010; // Bonus for on-chain match
+          updateTickerAndWithdrawAmount();
+          document.getElementById("matchNotice").innerText =
+            "🎉 Hash found on-chain! Bonus rewarded.";
+          console.log("🔍 WhatsOnChain Match Found:", data);
+        } else {
+          document.getElementById("matchNotice").innerText = "";
+        }
+      } catch (e) {
+        console.log("🕸️ No WhatsOnChain match for hash.");
+        document.getElementById("matchNotice").innerText = "";
+      }
+    }
+
+    function updateTickerAndWithdrawAmount() {
+      document.getElementById("bsvTicker").innerText = `${bsvTotal.toFixed(8)} bsv`;
+
+      const amountInput = document.getElementById("amount");
+      const maxSatoshis = Math.floor(bsvTotal * 1e8);
+      amountInput.max = maxSatoshis;
+
+      // If current amount input is higher than max, adjust it
+      if (parseInt(amountInput.value, 10) > maxSatoshis) {
+        amountInput.value = maxSatoshis;
+      }
+
+      // Update note below amount input
+      document.getElementById("maxAmountNote").innerText =
+        `Max withdrawable: ${maxSatoshis} satoshis`;
+    }
+
+    function startMining() {
+      if (mining) return;
+      mining = true;
+      mineLoop();
+    }
+
+    function stopMining() {
+      mining = false;
+    }
+
+    async function sendBSV() {
+      const toAddress = document.getElementById("toAddress").value.trim();
+      const amountInput = document.getElementById("amount");
+      const amount = parseInt(amountInput.value, 10);
+      const status = document.getElementById("status");
+
+      if (!toAddress || isNaN(amount) || amount <= 0) {
+        status.innerText = "❌ Please enter a valid address and amount.";
+        return;
+      }
+
+      // Check amount <= mined balance
+      const maxSatoshis = Math.floor(bsvTotal * 1e8);
+      if (amount > maxSatoshis) {
+        status.innerText = `❌ Cannot send more than your mined balance (${maxSatoshis} satoshis).`;
+        return;
+      }
+
+      status.innerText = "Sending transaction...";
+
+      try {
+        const res = await fetch("/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ toAddress, amountSatoshis: amount }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          status.innerText = `✅ Sent! TXID: ${data.txid}`;
+          // Deduct sent amount from local balance
+          bsvTotal -= amount / 1e8;
+          updateTickerAndWithdrawAmount();
+        } else {
+          status.innerText = `❌ Error: ${data.error || "Unknown error"}`;
+        }
+      } catch (err) {
+        console.error(err);
+        status.innerText = "❌ Transaction failed. Check console.";
+      }
+    }
+  </script>
+
+  <h1>Adjustable CPU Load</h1>
+  <label for="cpuSlider">
+    Speed (Idle %): <span id="cpuPercent">50</span>%
+  </label>
+  <br />
+  <input
+    type="range"
+    id="cpuSlider"
+    min="10"
+    max="100"
+    value="50"
+    step="1"
+  />
+
+  <div id="cpuUsage">Calculating...</div>
+  <div id="hashRate">Hashes per Second: 0</div>
+
+  <script>
+    const intervalMs = 1000;
+    const cpuSlider = document.getElementById("cpuSlider");
+    const cpuPercentLabel = document.getElementById("cpuPercent");
+    const cpuUsageDisplay = document.getElementById("cpuUsage");
+    const hashRateDisplay = document.getElementById("hashRate");
+
+    // Simple dummy hash function to simulate work
+    function dummyHash(input) {
+      let hash = 0;
+      for (let i = 0; i < input.length; i++) {
+        hash ^= input.charCodeAt(i);
+        hash = (hash << 5) | (hash >>> 27);
+      }
+      return hash >>> 0;
+    }
+
+    function busyLoop(durationMs) {
+      const start = performance.now();
+      let hashes = 0;
+      while (performance.now() - start < durationMs) {
+        dummyHash("hash" + hashes);
+        hashes++;
+      }
+      return hashes;
+    }
+
+    function simulateCpuUsage() {
+      const idlePercent = parseInt(cpuSlider.value, 10);
+      cpuPercentLabel.innerText = idlePercent;
+
+      const idleTime = (intervalMs * idlePercent) / 100;
+      const busyTime = intervalMs - idleTime;
+
+      const start = performance.now();
+
+      // Run busy loop and get hashes done
+      const hashes = busyLoop(busyTime);
+
+      const actualBusy = performance.now() - start;
+
+      cpuUsageDisplay.innerText = `Busy time: ${actualBusy.toFixed(
+        1
+      )} ms | Idle time: ${idleTime.toFixed(1)} ms`;
+
+      // Calculate hashes per second scaled to 1 second
+      const hashesPerSecond = (hashes / actualBusy) / 10;
+
+      hashRateDisplay.innerText = `Hashes per Second: ${hashesPerSecond.toLocaleString(
+        undefined,
+        { maximumFractionDigits: 0 }
+      )}`;
+
+      setTimeout(simulateCpuUsage, idleTime);
+    }
+
+    cpuSlider.addEventListener("input", () => {
+      cpuPercentLabel.innerText = cpuSlider.value;
+    });
+
+    simulateCpuUsage();
+  </script>
+</body>
+</html>

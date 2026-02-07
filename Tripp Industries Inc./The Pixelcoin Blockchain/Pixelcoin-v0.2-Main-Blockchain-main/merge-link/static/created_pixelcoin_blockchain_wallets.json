@@ -1,0 +1,24 @@
+{
+    "quantum_public_key": "a1c88578b1df3cce72aa959d21330a5b4d6967d0e24751aabd963a3d59251c4e",
+    "balance": "0 Pixelcoin (PXL)",
+    "trippthomas456@gmail.com": {
+        "email": "trippthomas456@gmail.com",
+        "password": "red",
+        "public_create_key": "66b91a6d4aff5ea612a2b56568d7625256776f472e24b6cf2cb50dbc670877c4a7ab367373786b0fcaa559b94b920caeee296251a227d72f268f66f2732208d0",
+        "private_create_key": "94297968eacbc2b98030995328d8fdcf86ddf20b8e9c43ee13898daaf5455207",
+        "quantum_create_public_key": "75e6dd69f50e8109ff6760d4d4846c635899c7c03a031677bc1d6b681afebcb8",
+        "quantum_create_private_key": "5006e617f8182fdf914cff3e150d650d19691fc51a5eb2630e3c3dd12cd2ae32",
+        "seed_create_phrase": "say save right clever body casual angry horn wife country quarter wash",
+        "balance_created": 0
+    },
+    "trippt085@gmail.com": {
+        "email": "trippt085@gmail.com",
+        "password": "wow",
+        "public_create_key": "77a4fca770bd3e3779ad157a27c766f7163e18e60cee50bd3faaa886a3fdbd1923494440d40146c4084e86ea890aab8cfd41b0b431a7b3ace42d9eeeb776fc15",
+        "private_create_key": "5bee4402972ec7239c0559b757a2d751051591f8fb5f2df864b6228ee69f2853",
+        "quantum_create_public_key": "6e9962a5fda3bb9c4418d7b1791d6a2cf931569c9d37c3845ded15d4b2ede062",
+        "quantum_create_private_key": "37f209b401371e86ca2513a13ece9513b2761c7a97f197c1912c98dc13b6d1fa",
+        "seed_create_phrase": "before lyrics reject maple hurdle day cement message total post delay galaxy",
+        "balance_created": 0
+    }
+}

@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pixelcoin Blockchain</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h2, h3 {
+      text-align: center;
+    }
+    .info-box {
+      background-color: #f9f9f9;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 15px;
+    }
+    pre {
+      background-color: #f0f0f0;
+      padding: 10px;
+      overflow-x: auto;
+    }
+    .block {
+      background-color: #e7f7ff;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-left: 5px solid #007BFF;
+    }
+    .form-section {
+      margin-bottom: 30px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    input[type="email"], input[type="password"] {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 10px 15px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Pixelcoin's Quantum Proofed "Merge-Link" Blockchain</h2>
+    <img src="https://pixelcoin-blockchain.netlify.app/pixelcoin.png" alt="PixelCoin" width="128" height="100" style="display:block; margin:auto;">
+    <div class="form-section">
+      <div class="form-section">
+<h3>Login</h3>
+<form id="loginForm">
+  <label for="loginEmail">Email:</label>
+  <input type="email" id="loginEmail" required>
+  <br>
+  <label for="loginPassword">Password:</label>
+  <input type="password" id="loginPassword" required>
+  <br>
+  <button id="loginBtn" type="button">Login</button>
+</form>
+
+<!-- Logout Button -->
+<button id="logoutBtn" style="display:none; margin-top:10px;">Logout</button>
+
+<div id="loginMessage"></div>
+
+<div class="info-box" id="signupInfo" style="display: none;">
+  <p><strong>Email:</strong> <span id="signupEmailDisplay"></span></p>
+  <p><strong>Password:</strong> <span id="signupPasswordDisplay"></span></p>
+  <p><strong>ECDSA Public Key:</strong> <span id="createPubKey"></span></p>
+  <p><strong>ECDSA Private Key:</strong> <span id="createPrivKey"></span></p>
+  <p><strong>Quantum Public Key (Dilithium):</strong> <span id="createQuantumPub"></span></p>
+  <p><strong>Quantum Private Key (Dilithium):</strong></p>
+  <pre id="createQuantumPriv"></pre>
+  <p><strong>Seed Phrase:</strong></p>
+  <pre id="createSeed"></pre>
+  <p><strong>Balance:</strong> <span id="createBalance"></span></p>
+
+  <!-- Send Pixelcoins -->
+  <div class="section hidden" id="sendSection">
+    <h2>Send Pixelcoins</h2>
+    <input type="email" id="recipientEmail" placeholder="Recipient Email">
+    <input type="number" id="sendAmount" placeholder="Amount">
+    <button id="sendBtn" type="button">Send</button>
+    <p id="sendMessage"></p>
+
+    <h2>Receive Pixelcoins</h2>
+    <p><center>The receiving address is the ECDSA Public Key above.</center></p>
+  </div>
+
+  <!-- Transactions -->
+  <div class="section">
+    <h2>All Transactions</h2>
+    <button id="refreshTransactions" type="button">Refresh Transactions</button>
+    <ul id="transactionsList"></ul>
+  </div>
+    <h3>Buy Pixelcoins through Pixelcoin Pay:</h3>
+<input type="number" id="tokenAmount" placeholder="Pixelcoins to buy">
+
+<!-- Stripe Card Element -->
+<div id="card-element" style="padding: 10px; border: 1px solid #ccc; border-radius: 4px;"></div>
+<div id="card-errors" role="alert" style="color:red; margin-top:5px;"></div>
+
+<button id="buyTokens">Pay with Card</button>
+
+<!-- Stripe.js -->
+<script src="https://js.stripe.com/v3/"></script>
+
+<script>
+const stripe = Stripe("pk_test_51QeCn9Q03ruVESA4Zip10R4FXAq3xOpetYNws2Rx1SfHf6uJJOXmPsNopsa4olvQKqckJQlukn0bQursVLN3nTHy00bpUfGVlS"); // public key
+const elements = stripe.elements();
+const card = elements.create("card");
+card.mount("#card-element");
+
+document.getElementById("buyTokens").addEventListener("click", async () => {
+    if (!currentUserEmail) {
+        alert("Please log in first.");
+        return;
+    }
+
+    const tokenAmount = parseInt(document.getElementById("tokenAmount").value);
+    if (!tokenAmount || tokenAmount <= 0) return alert("Enter a valid token amount");
+
+    const { paymentMethod, error } = await stripe.createPaymentMethod({
+        type: "card",
+        card: card
+    });
+
+    if (error) {
+        document.getElementById("card-errors").textContent = error.message;
+        return;
+    }
+
+    try {
+        const res = await fetch("/purchase_tokens", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                email: currentUserEmail, 
+                token_amount: tokenAmount, 
+                payment_method_id: paymentMethod.id 
+            })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            alert(data.message);
+            loadWalletInfo(); // refresh wallet balance
+        } else {
+            alert(data.message);
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Error processing payment");
+    }
+});
+</script>
+
+
+</div>
+
+<script>
+let currentUserEmail = null;
+
+// ----------------- On Page Load -----------------
+document.addEventListener("DOMContentLoaded", () => {
+    const savedEmail = localStorage.getItem("currentUserEmail");
+    if (savedEmail) {
+        currentUserEmail = savedEmail;
+        loadWalletFromJson(savedEmail);
+        document.getElementById("sendSection").classList.remove("hidden");
+        loadTransactions();
+        document.getElementById("logoutBtn").style.display = "block";
+    }
+});
+
+// ----------------- Login -----------------
+document.getElementById("loginBtn").addEventListener("click", async () => {
+    const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+    const password = document.getElementById("loginPassword").value;
+    const loginMessage = document.getElementById("loginMessage");
+
+    try {
+        const res = await fetch("/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            loginMessage.textContent = data.message;
+            loginMessage.style.color = "green";
+
+            localStorage.setItem("currentUserEmail", email);
+            currentUserEmail = email;
+
+            loadWalletFromJson(email);
+            document.getElementById("sendSection").classList.remove("hidden");
+            loadTransactions();
+            document.getElementById("logoutBtn").style.display = "block";
+        } else {
+            loginMessage.textContent = data.message;
+            loginMessage.style.color = "red";
+            document.getElementById("signupInfo").style.display = "none";
+            document.getElementById("logoutBtn").style.display = "none";
+        }
+    } catch (err) {
+        console.error(err);
+        loginMessage.textContent = "Server error";
+        loginMessage.style.color = "red";
+    }
+});
+
+// ----------------- Logout -----------------
+document.getElementById("logoutBtn").addEventListener("click", () => {
+    currentUserEmail = null;
+    localStorage.removeItem("currentUserEmail");
+    document.getElementById("signupInfo").style.display = "none";
+    document.getElementById("sendSection").classList.add("hidden");
+    document.getElementById("transactionsList").innerHTML = "";
+    document.getElementById("loginMessage").textContent = "";
+    document.getElementById("logoutBtn").style.display = "none";
+    document.getElementById("loginEmail").value = "";
+    document.getElementById("loginPassword").value = "";
+});
+
+// ----------------- Load Wallet From JSON -----------------
+function loadWalletFromJson(email) {
+    fetch("/static/created_pixelcoin_blockchain_wallets.json")
+    .then(response => response.json())
+    .then(wallets => {
+        const wallet = wallets[email];
+        if (!wallet) {
+            alert("Wallet not found for this email.");
+            return;
+        }
+
+        document.getElementById("signupInfo").style.display = "block";
+        document.getElementById("signupEmailDisplay").textContent = wallet.email;
+        document.getElementById("signupPasswordDisplay").textContent = wallet.password;
+        document.getElementById("createPubKey").textContent = wallet.public_create_key;
+        document.getElementById("createPrivKey").textContent = wallet.private_create_key;
+        document.getElementById("createQuantumPub").textContent = wallet.quantum_create_public_key;
+        document.getElementById("createQuantumPriv").textContent = wallet.quantum_create_private_key;
+        document.getElementById("createSeed").textContent = wallet.seed_create_phrase;
+        document.getElementById("createBalance").textContent = wallet.balance_created + " Pixelcoin (PXL)";
+    })
+    .catch(() => alert("Error loading your wallet."));
+}
+
+// ----------------- Send Pixelcoins -----------------
+document.getElementById("sendBtn").addEventListener("click", async () => {
+    const recipient = document.getElementById("recipientEmail").value.trim();
+    const amount = parseFloat(document.getElementById("sendAmount").value);
+    const sendMessage = document.getElementById("sendMessage");
+
+    if (!recipient || !amount || amount <= 0) {
+        sendMessage.textContent = "Please enter a valid recipient and amount.";
+        sendMessage.style.color = "red";
+        return;
+    }
+
+    try {
+        const res = await fetch("/send_pixelcoin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ from: currentUserEmail, to: recipient, amount })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            sendMessage.textContent = `Sent ${amount} PXL to ${recipient}!`;
+            sendMessage.style.color = "green";
+            loadWalletFromJson(currentUserEmail);
+            loadTransactions();
+        } else {
+            sendMessage.textContent = data.message;
+            sendMessage.style.color = "red";
+        }
+    } catch (err) {
+        console.error(err);
+        sendMessage.textContent = "Server error sending Pixelcoin.";
+        sendMessage.style.color = "red";
+    }
+});
+
+// ----------------- Transactions -----------------
+document.getElementById("refreshTransactions").addEventListener("click", loadTransactions);
+
+function loadTransactions() {
+    if (!currentUserEmail) return;
+
+    fetch("/get_transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: currentUserEmail })
+    })
+    .then(res => res.json())
+    .then(data => {
+        const list = document.getElementById("transactionsList");
+        list.innerHTML = "";
+
+        if (!data.success || !data.transactions) {
+            list.innerHTML = "<li>No transactions found.</li>";
+            return;
+        }
+
+        data.transactions.forEach(tx => {
+            const li = document.createElement("li");
+            li.textContent = `${tx.date} - ${tx.from} → ${tx.to}: ${tx.amount} PXL`;
+            list.appendChild(li);
+        });
+    })
+    .catch(err => {
+        console.error(err);
+        const list = document.getElementById("transactionsList");
+        list.innerHTML = "<li>There have not been any transactions made yet.</li>";
+    });
+}
+</script>
+
+
+</script>
+    <div class="form-section">
+      <h3>Create Wallet</h3>
+      <form id="signupForm">
+        <label for="signupEmail">Email:</label>
+        <input type="email" id="signupEmail" name="email" required />
+        <label for="signupPassword">Password:</label>
+        <input type="password" id="signupPassword" name="password" required />
+        <button type="submit">Create</button>
+      </form>
+    </div>
+
+    <div class="info-box" id="signupInfo" style="display: none;">
+      <p><strong>Email:</strong> <span id="signupEmailDisplay"></span></p>
+      <p><strong>Password:</strong> <span id="signupPasswordDisplay"></span></p>
+      <p><strong>ECDSA Public Key:</strong> <span id="createPubKey"></span></p>
+      <p><strong>ECDSA Private Key:</strong> <span id="createPrivKey"></span></p>
+      <p><strong>Quantum Public Key (Dilithium):</strong> <span id="createQuantumPub"></span></p>
+      <p><strong>Quantum Private Key (Dilithium):</strong></p>
+      <pre id="createQuantumPriv"></pre>
+      <p><strong>Seed Phrase:</strong></p>
+      <pre id="createSeed"></pre>
+      <p><strong>Balance:</strong> <span id="createBalance"></span></p>
+
+    <!-- Send Pixelcoins -->
+    <div class="section hidden" id="sendSection">
+        <h2>Send Pixelcoins</h2>
+        <input type="email" id="recipientEmail" placeholder="Recipient Email">
+        <input type="number" id="sendAmount" placeholder="Amount">
+        <button onclick="sendPixelcoin()">Send</button>
+        <p id="sendMessage"></p>
+        <h2>Recieve Pixelcoins</h2>
+        <p><center>The recieving address is the ECDSA Public Key found above. </center> 
+
+    </div>
+
+    <!-- Transactions -->
+    <div class="section">
+        <h2>All Transactions</h2>
+        <button onclick="loadTransactions()">Refresh Transactions</button>
+        <ul id="transactionsList"></ul>
+    </div>
+    </div>
+
+    <div class="info-box" id="dev" style="display: none;">
+      <h3>Developer Wallet (Quantum-Proofed)</h3>
+      <p><strong>Email:</strong> <span id="devEmail"></span></p>
+      <p><strong>Password:</strong> <span id="devPassword"></span></p>
+      <p><strong>ECDSA Public Key:</strong> <span id="devPubKey"></span></p>
+      <p><strong>ECDSA Private Key:</strong> <span id="devPrivKey"></span></p>
+      <p><strong>Quantum Public Key (Dilithium):</strong> <span id="devQuantumPub"></span></p>
+      <p><strong>Quantum Private Key (Dilithium):</strong></p>
+      <pre id="devQuantumPriv"></pre>
+      <p><strong>Seed Phrase:</strong></p>
+      <pre id="devSeed"></pre>
+      <p><strong>Balance:</strong> <span id="devBalance"></span></p>
+    </div>
+
+    <div class="info-box">
+      <h3>Temporary Session Wallet</h3>
+      <div id="sessionWallet">Loading wallet info...</div>
+    </div>
+
+    <div class="info-box">
+      <h3>Registered Pixelcoin Public Key</h3>
+      <ul id="publicKeysList"></ul>
+    </div>
+
+    <div class="info-box">
+      <h3>Pixelcoin Blockchain Explorer</h3>
+      <div id="blockchain">Loading blockchain...</div>
+    </div>
+  </div>
+  
+
+  <script>
+    // Load developer wallet info and show if logged in
+    fetch('/developer_wallet')
+      .then(res => res.json())
+      .then(data => {
+        if(data.email && data.password) {
+          document.getElementById('devEmail').textContent = data.email;
+          document.getElementById('devPassword').textContent = data.password;
+          document.getElementById('devPubKey').textContent = data.public_key;
+          document.getElementById('devPrivKey').textContent = data.private_key;
+          document.getElementById('devQuantumPub').textContent = data.quantum_public_key || "N/A";
+          document.getElementById('devQuantumPriv').textContent = data.quantum_private_key || "N/A";
+          document.getElementById('devSeed').textContent = data.seed_phrase;
+          document.getElementById('devBalance').textContent = data.balance;
+        }
+      })
+      .catch(err => console.error('Wallets on the Pixelcoin Blockchain have not been made yet.', err));
+
+    if (localStorage.getItem("isDeveloperLoggedIn") === "true") {
+      document.getElementById("dev").style.display = "block";
+    }
+
+    // LOGIN FORM
+    document.getElementById("loginForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+
+      const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+      const password = document.getElementById("loginPassword").value;
+
+      // Check if developer login:
+      const devEmail = document.getElementById("devEmail").textContent.trim();
+      const devPassword = document.getElementById("devPassword").textContent.trim();
+      if (email === devEmail && password === devPassword) {
+        localStorage.setItem("isDeveloperLoggedIn", "true");
+        location.reload();
+        return;
+      }
+
+      fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          localStorage.setItem("isCreatedLoggedIn", "true");  // or any flag you want
+          location.reload();
+        } else {
+          alert(data.message || "Login failed");
+        }
+      })
+      .catch(() => alert("Server error during login."));
+    });
+
+    
+  fetch('/static/session_wallets.json')
+  .then(response => {
+    if (!response.ok) throw new Error('File not found');
+    return response.json();
+  })
+  .then(wallet => {
+    // wallet is a single object, not an array
+    const walletDiv = document.getElementById('sessionWallet');
+
+    walletDiv.innerHTML = `
+      <p><strong>Quantum Public Key:</strong> ${wallet.quantum_public_key ?? 'N/A'}</p>
+      <p><strong>Balance:</strong> ${wallet.balance ?? '0'}</p>
+    `;
+  })
+  .catch(err => {
+    console.error(err);
+    document.getElementById('sessionWallet').textContent = 'Error loading wallet info.';
+  });
+
+
+
+    // Load blockchain explorer info
+    fetch('/chain')
+      .then(response => response.json())
+      .then(data => {
+        const blockchainDiv = document.getElementById('blockchain');
+        blockchainDiv.innerHTML = '';
+        data.forEach(block => {
+          const blockDiv = document.createElement('div');
+          blockDiv.className = 'block';
+          blockDiv.innerHTML = `
+            <p><strong>Index:</strong> ${block.index}</p>
+            <p><strong>Timestamp:</strong> ${new Date(block.timestamp * 1000).toLocaleString()}</p>
+            <p><strong>Transactions:</strong> <pre>${JSON.stringify(block.transactions, null, 2)}</pre></p>
+            <p><strong>Previous Hash:</strong> ${block.previous_hash}</p>
+            <p><strong>Validator:</strong> ${block.validator}</p>
+            <p><strong>Hash:</strong> ${block.hash}</p>
+            <p><strong>Quantum History Proof:</strong> ${block.history_proof}</p>
+          `;
+          blockchainDiv.appendChild(blockDiv);
+        });
+      })
+      .catch(() => {
+        document.getElementById('blockchain').textContent = 'Error loading blockchain.';
+      });
+
+ // Fetch and display all registered wallets
+const list = document.getElementById('publicKeysList');
+list.innerHTML = '';
+
+// 1️⃣ Fetch developer wallet
+fetch('/static/developer_wallet.json')
+  .then(res => res.json())
+  .then(dev => {
+    const item = document.createElement('li');
+    item.innerHTML = `
+      <strong>Developer Wallet</strong><br>
+      Email: ${dev.email || 'N/A'}<br>
+      Quantum Public Key: ${dev.quantum_public_key || 'N/A'}<br>
+      Balance: ${dev.balance_created ?? dev.balance ?? 10} PXL
+    `;
+    list.appendChild(item);
+  })
+  .catch(err => {
+    console.error('Wallets on the Pixelcoin Blockchain have not been made yet.', err);
+    const item = document.createElement('li');
+    item.innerHTML = '<strong>Developer Wallet</strong><br>Error loading wallet.';
+    list.appendChild(item);
+  })
+  .finally(() => {
+    // 2️⃣ Fetch only user_wallets
+    fetch('/static/created_pixelcoin_blockchain_wallets.json')
+      .then(res => res.json())
+      .then(data => {
+        const userWallets = data.user_wallets || {}; // only iterate actual wallets
+        Object.values(userWallets).forEach(wallet => {
+          const item = document.createElement('li');
+          item.innerHTML = `
+            <strong>${wallet.email || 'N/A'}</strong><br>
+            Quantum Public Key: ${wallet.quantum_create_public_key || 'N/A'}<br>
+            Balance: ${wallet.balance_created ?? wallet.balance ?? 0} PXL
+          `;
+          list.appendChild(item);
+        });
+      })
+      .catch(err => {
+        console.error('Wallets on the Pixelcoin Blockchain have not been made yet.', err);
+        const item = document.createElement('li');
+        item.innerHTML = 'Wallets on the Pixelcoin Blockchain have not been made yet.';
+        list.appendChild(item);
+      });
+  });
+
+  fetch('/static/created_pixelcoin_blockchain_wallets.json')
+  .then(res => res.json())
+  .then(data => {
+    const list = document.getElementById('publicKeysList');
+
+    // Ignore dev wallet keys (handled separately)
+    const skipKeys = ['quantum_public_key', 'balance'];
+    Object.keys(data).forEach(key => {
+      if (skipKeys.includes(key)) return;
+
+      const wallet = data[key];
+      if (wallet && wallet.email && wallet.quantum_create_public_key !== undefined) {
+        const item = document.createElement('li');
+        item.innerHTML = `
+          <strong>${wallet.email}</strong><br>
+          Quantum Public Key: ${wallet.quantum_create_public_key}<br>
+          Balance: ${wallet.balance_created ?? wallet.balance ?? 0} PXL
+        `;
+        list.appendChild(item);
+      }
+    });
+  })
+  .catch(err => {
+    console.error('Wallets on the Pixelcoin Blockchain have not been made yet.', err);
+  });
+
+
+    // Logout button handler
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      fetch('/logout')
+        .then(() => {
+          localStorage.removeItem("isDeveloperLoggedIn");
+          localStorage.removeItem("isCreatedLoggedIn");
+          window.location.href = '/';
+        })
+        .catch(() => alert('Error logging out.'));
+    });
+
+    // Assume you have a container div with id "signupInfo"
+const container = document.getElementById('signupInfo');
+
+// Create the Delete Wallet button dynamically
+const deleteBtn = document.createElement('button');
+deleteBtn.id = 'deleteWalletBtn';
+deleteBtn.textContent = 'Remove Wallet';
+deleteBtn.style.backgroundColor = '#dc3545';
+deleteBtn.style.color = 'white';
+deleteBtn.style.padding = '8px 12px';
+deleteBtn.style.border = 'none';
+deleteBtn.style.borderRadius = '4px';
+deleteBtn.style.cursor = 'pointer';
+deleteBtn.style.marginTop = '10px';
+
+// Append the button to the container
+container.appendChild(deleteBtn);
+
+// Add click event handler to delete wallet display
+deleteBtn.addEventListener('click', () => {
+  const emailEl = document.getElementById('signupEmailDisplay');
+  if (!emailEl) {
+    alert('Email display element not found.');
+    return;
+  }
+
+  // ✅ Trim email to match JSON key exactly
+  const email = emailEl.textContent.trim();
+  if (!email) {
+    alert('No wallet selected to delete.');
+    return;
+  }
+
+  console.log("Attempting to delete wallet with email:", email);
+
+  // Call backend to delete wallet
+  deleteWallet(email);
+
+  // Clear the displayed wallet info
+  const fields = [
+    "signupEmailDisplay", "signupPasswordDisplay", "createPubKey",
+    "createPrivKey", "createQuantumPub", "createQuantumPriv",
+    "createSeed", "createBalance", "deletion_request"
+  ];
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = "";
+  });
+
+  // Hide the info box
+  container.style.display = "none";
+
+  alert("Your Pixelcoin Wallet has been successfully removed");
+});
+
+function deleteWallet(email) {
+  const payload = { email: email };
+  console.log("Sending delete request:", payload);
+
+  fetch('/delete_wallet', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log("Server response:", data);
+    if (data.success) {
+      alert('Wallet deleted successfully.');
+      // Reload or dynamically update wallet list
+      window.location.href = '/';
+    } else {
+      alert('Failed to delete wallet: ' + data.message);
+    }
+  })
+  .catch(err => {
+    alert('Server error deleting wallet.');
+    console.error("Fetch error:", err);
+  });
+}
+
+</script>
+
+  
+  <script> 
+let currentUserEmail = null;
+
+// ----------------- After Login -----------------
+function afterLogin(email) {
+    currentUserEmail = email;
+    localStorage.setItem("currentUserEmail", email);
+    loadWalletInfo();
+    loadTransactions();
+    document.getElementById("sendSection").classList.remove("hidden");
+}
+
+// ----------------- Login Form -----------------
+document.getElementById("loginForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+    const password = document.getElementById("loginPassword").value;
+
+    // Check if developer login:
+    const devEmail = document.getElementById("devEmail").textContent.trim();
+    const devPassword = document.getElementById("devPassword").textContent.trim();
+    if (email === devEmail && password === devPassword) {
+        localStorage.setItem("isDeveloperLoggedIn", "true");
+        location.reload();
+        return;
+    }
+
+    fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            afterLogin(email);
+        } else {
+            alert(data.message || "Login failed");
+        }
+    })
+    .catch(() => alert("Server error during login."));
+});
+
+// ----------------- Load Wallet Info -----------------
+async function loadWalletInfo() {
+    if (!currentUserEmail) return;
+
+    // Get balance from backend
+    const balanceRes = await fetch("/get_balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: currentUserEmail })
+    });
+    const balanceData = await balanceRes.json();
+
+    if (balanceData.success) {
+        document.getElementById("createBalance").textContent = balanceData.balance + " PXL";
+    }
+
+    // Fetch wallet info (keys) from backend
+    const walletRes = await fetch("/get_wallet_info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: currentUserEmail })
+    });
+    const walletData = await walletRes.json();
+
+    if (walletData.success) {
+        document.getElementById("signupEmailDisplay").textContent = currentUserEmail;
+        document.getElementById("createPubKey").textContent = walletData.public_key;
+        document.getElementById("createPrivKey").textContent = walletData.private_key;
+        document.getElementById("createQuantumPub").textContent = walletData.quantum_public_key;
+        document.getElementById("createQuantumPriv").textContent = walletData.quantum_private_key;
+        document.getElementById("createSeed").textContent = walletData.seed_phrase;
+    }
+}
+
+// ----------------- Send Pixelcoin -----------------
+async function sendPixelcoin() {
+    if (!currentUserEmail) {
+        alert("Please login first.");
+        return;
+    }
+
+    const recipient_email = document.getElementById("recipientEmail").value.trim().toLowerCase();
+    const amount = document.getElementById("sendAmount").value;
+
+    const res = await fetch("/send_transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipient_email, amount })
+    });
+
+    const data = await res.json();
+    document.getElementById("sendMessage").textContent = data.message || (data.success ? "Transaction sent!" : "Error sending");
+
+    // Refresh balance and transactions
+    await loadWalletInfo();
+    await loadTransactions();
+}
+
+// ----------------- Load Transactions -----------------
+async function loadTransactions() {
+    const res = await fetch("/transactions");
+    const data = await res.json();
+    const list = document.getElementById("transactionsList");
+    list.innerHTML = "";
+
+    if (data.success) {
+        data.transactions.forEach(tx => {
+            const li = document.createElement("li");
+            li.textContent = `${tx.sender} -> ${tx.recipient}: ${tx.amount} PXL`;
+            list.appendChild(li);
+        });
+    }
+}
+
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+    await fetch("/logout", { method: "POST" });
+    localStorage.removeItem("currentUserEmail");
+    currentUserEmail = null;
+    location.reload();
+});
+
+// ----------------- On Page Load -----------------
+document.addEventListener("DOMContentLoaded", () => {
+    const savedEmail = localStorage.getItem("currentUserEmail");
+    if (savedEmail) {
+        currentUserEmail = savedEmail;
+        loadWalletInfo();
+        loadTransactions();
+        document.getElementById("sendSection").classList.remove("hidden");
+    }
+});
+   
+function loadWalletFromJson() {
+  const email = document.getElementById("loginEmail").value.trim().toLowerCase();
+
+  fetch("/static/created_pixelcoin_blockchain_wallets.json")
+    .then(response => response.json())
+    .then(wallets => {
+      const wallet = wallets[email];
+      if (!wallet) {
+        alert("Wallet not found for this email.");
+        return;
+      }
+
+      // Display the wallet
+      document.getElementById("signupInfo").style.display = "block";
+      document.getElementById("signupEmailDisplay").textContent = wallet.email;
+      document.getElementById("signupPasswordDisplay").textContent = wallet.password;
+      document.getElementById("createPubKey").textContent = wallet.public_create_key;
+      document.getElementById("createPrivKey").textContent = wallet.private_create_key;
+      document.getElementById("createQuantumPub").textContent = wallet.quantum_create_public_key;
+      document.getElementById("createQuantumPriv").textContent = wallet.quantum_create_private_key;
+      document.getElementById("createSeed").textContent = wallet.seed_create_phrase;
+      document.getElementById("createBalance").textContent = wallet.balance_created + " Pixelcoin (PXL)";
+    })
+    .catch(() => alert("Error loading your wallet."));
+}
+</script>
+
+<div class="info-box" id="signupInfo" style="display: none;">
+  <p><strong>Email:</strong> <span id="signupEmailDisplay"></span></p>
+  <p><strong>Password:</strong> <span id="signupPasswordDisplay"></span></p>
+  <p><strong>ECDSA Public Key:</strong> <span id="createPubKey"></span></p>
+  <p><strong>ECDSA Private Key:</strong> <span id="createPrivKey"></span></p>
+  <p><strong>Quantum Public Key (Dilithium):</strong> <span id="createQuantumPub"></span></p>
+  <p><strong>Quantum Private Key (Dilithium):</strong></p>
+  <pre id="createQuantumPriv"></pre>
+  <p><strong>Seed Phrase:</strong></p>
+  <pre id="createSeed"></pre>
+  <p><strong>Balance:</strong> <span id="createBalance"></span></p>
+</div>
+<script>
+document.getElementById("signupForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+
+  const email = document.getElementById("signupEmail").value.trim().toLowerCase();
+  const password = document.getElementById("signupPassword").value;
+
+  fetch("/create_wallet", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.public_key) {
+      // Display wallet info
+      document.getElementById("signupInfo").style.display = "block";
+      document.getElementById("signupEmailDisplay").textContent = data.email;
+      document.getElementById("signupPasswordDisplay").textContent = data.password;
+      document.getElementById("createPubKey").textContent = data.public_key;
+      document.getElementById("createPrivKey").textContent = data.private_key;
+      document.getElementById("createQuantumPub").textContent = data.quantum_public_key;
+      document.getElementById("createQuantumPriv").textContent = data.quantum_private_key;
+      document.getElementById("createSeed").textContent = data.seed_phrase;
+      document.getElementById("createBalance").textContent = data.balance;
+    } else {
+      alert("Wallet was sucessfully created on the blockchain.");
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert("Error connecting to server.");
+  });
+});
+</script>
+<script>
+  // Global variable for the logged-in email
+let loggedInEmail = null;
+
+// Fetch session wallet info from backend
+window.addEventListener('DOMContentLoaded', () => {
+  fetch('/user_wallet')
+    .then(res => res.json())
+    .then(data => {
+      if (data.email) {
+        loggedInEmail = data.email;
+        document.getElementById('loginStatus').textContent = `Logged in as: ${loggedInEmail}`;
+        // Automatically show current balance on load
+        fetchBalance();
+      } else {
+        document.getElementById('loginStatus').textContent = 'Please login first.';
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      document.getElementById('loginStatus').textContent = 'Error fetching session wallet.';
+    });
+});
+
+// Function to fetch and display balance
+function fetchBalance() {
+  if (!loggedInEmail) return;
+
+  fetch('/get_balance', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: loggedInEmail })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      document.getElementById('balanceStatus').textContent =
+        `💰 Balance: ${data.balance} PXL`;
+    } else {
+      document.getElementById('balanceStatus').textContent =
+        `❌ Error fetching balance: ${data.message}`;
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    document.getElementById('balanceStatus').textContent =
+      'Server error checking balance.';
+  });
+}
+
+
+
+</script>
+<script>
+  async function loadWalletInfo() {
+  if (!currentUserEmail) return;
+
+  try {
+    const res = await fetch("/get_wallet_info", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: currentUserEmail })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      document.getElementById("signupEmailDisplay").textContent = data.email;
+      document.getElementById("signupPasswordDisplay").textContent = data.password;
+      document.getElementById("createPubKey").textContent = data.public_key;
+      document.getElementById("createPrivKey").textContent = data.private_key;
+      document.getElementById("createQuantumPub").textContent = data.quantum_public_key;
+      document.getElementById("createQuantumPriv").textContent = data.quantum_private_key;
+      document.getElementById("createSeed").textContent = data.seed_phrase;
+      document.getElementById("createBalance").textContent = data.balance + " PXL";
+
+      // Make sure the box is visible
+      document.getElementById("signupInfo").style.display = "block";
+    } else {
+      alert(data.message);
+    }
+  } catch (err) {
+    console.error("Error loading wallet info", err);
+  }
+}
+
+</script>
+</body>
+</html>

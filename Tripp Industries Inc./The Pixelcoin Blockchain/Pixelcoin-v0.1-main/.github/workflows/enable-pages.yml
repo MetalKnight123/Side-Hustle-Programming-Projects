@@ -1,0 +1,26 @@
+name: Enable GitHub Pages (auto-configure)
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+
+jobs:
+  configure-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable Pages via GitHub API
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const repo = context.repo;
+            core.info(`Configuring Pages for ${repo.owner}/${repo.repo} -> gh-pages`);
+            await github.rest.repos.createPagesSite({
+              owner: repo.owner,
+              repo: repo.repo,
+              source: { branch: 'gh-pages', path: '/' }
+            });
+            core.info('Pages site creation requested.');
