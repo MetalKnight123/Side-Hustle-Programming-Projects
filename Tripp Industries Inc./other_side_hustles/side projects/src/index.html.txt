@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline Text Classification & Response Generator</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 50px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .container {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .result {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Offline Text Classification & Response Generator</h1>
+    
+    <div class="container">
+        <label for="inputText">Enter a sentence: </label>
+        <input type="text" id="inputText" placeholder="e.g., Hello, how are you?">
+        <button onclick="predict()">Classify & Respond</button>
+
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        // Example categories
+        const categories = ['greeting', 'question', 'statement'];
+
+        // Training data with categories and responses
+        const trainingData = [
+            { text: "Hello, how are you?", label: 'greeting', response: "Hello! How can I help you today?" },
+            { text: "Hi there!", label: 'greeting', response: "Hey! What's up?" },
+            { text: "What is your name?", label: 'question', response: "I am an AI assistant. What's your name?" },
+            { text: "How old are you?", label: 'question', response: "I don't have an age like humans, but I am constantly learning!" },
+            { text: "I am fine.", label: 'statement', response: "Great to hear! How can I assist you?" },
+            { text: "This is great!", label: 'statement', response: "Glad you think so! What's next?" }
+        ];
+
+        // Tokenizer (simple word-to-index map)
+        const tokenizer = new Map();
+        let wordIndex = 1; // Indexing starts at 1 (0 is reserved for padding)
+
+        // Prepare the training data and build the tokenizer map
+        const trainingInputs = [];
+        const trainingLabels = [];
+
+        trainingData.forEach(data => {
+            const words = data.text.toLowerCase().split(/\W+/);
+            const wordIndices = [];
+            words.forEach(word => {
+                if (!tokenizer.has(word)) {
+                    tokenizer.set(word, wordIndex++);
+                }
+                wordIndices.push(tokenizer.get(word));
+            });
+            trainingInputs.push(wordIndices);
+            trainingLabels.push(categories.indexOf(data.label));
+        });
+
+        // Define the maximum sequence length (padded length)
+        const maxLength = 10;
+
+        // Function to pad sequences to the max length
+        function padSequence(sequence) {
+            const padding = Array(maxLength - sequence.length).fill(0);
+            return [...sequence, ...padding].slice(0, maxLength); // Ensure it is exactly maxLength
+        }
+
+        // Create and train the model
+        async function createModel() {
+            const model = tf.sequential();
+            model.add(tf.layers.embedding({ inputDim: wordIndex, outputDim: 8, inputLength: maxLength }));
+            model.add(tf.layers.flatten());
+            model.add(tf.layers.dense({ units: 32, activation: 'relu' }));
+            model.add(tf.layers.dense({ units: categories.length, activation: 'softmax' }));
+            model.compile({ optimizer: 'adam', loss: 'categoricalCrossentropy', metrics: ['accuracy'] });
+            return model;
+        }
+
+        // Train the model
+        async function trainModel(model) {
+            // Prepare training data (pad sequences and convert labels to one-hot)
+            const xs = tf.tensor2d(trainingInputs.map(padSequence));
+            const ys = tf.oneHot(tf.tensor1d(trainingLabels, 'int32'), categories.length);
+            await model.fit(xs, ys, { epochs: 100 });
+        }
+
+        // Respond based on category
+        function getResponse(predictedClassIndex) {
+            // Find the response based on the predicted category
+            const category = categories[predictedClassIndex];
+            const responseData = trainingData.find(data => data.label === category);
+            return responseData ? responseData.response : "Sorry, I didn't understand that.";
+        }
+
+        // Predict the category and respond
+        async function predict() {
+            const inputText = document.getElementById('inputText').value.trim();
+            const resultElement = document.getElementById('result');
+            if (!inputText) {
+                resultElement.textContent = "Please enter a valid sentence.";
+                return;
+            }
+
+            // Tokenize the input text (convert it to indices)
+            const inputWords = inputText.toLowerCase().split(/\W+/);
+            const inputIndices = inputWords.map(word => tokenizer.has(word) ? tokenizer.get(word) : 0); // Default to 0 if word not found
+            const inputPadded = padSequence(inputIndices);
+
+            // Create and train the model
+            const model = await createModel();
+            await trainModel(model);
+
+            // Make a prediction
+            const inputTensor = tf.tensor2d([inputPadded]);
+            const prediction = model.predict(inputTensor);
+            const predictedClassIndex = prediction.argMax(1).dataSync()[0];
+            const predictedClass = categories[predictedClassIndex];
+
+            // Get a response based on the predicted category
+            const response = getResponse(predictedClassIndex);
+
+            resultElement.textContent = `Predicted Category: ${predictedClass}\nResponse: ${response}`;
+        }
+    </script>
+
+</body>
+</html>
