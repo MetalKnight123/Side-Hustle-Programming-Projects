@@ -1,0 +1,13 @@
+# This repository holds several projects. The Netlify site deploys the
+# Pixelcoin v0.1 static app, so point the build at that folder.
+[build]
+  base = "Tripp Industries Inc./The Pixelcoin Blockchain/Pixelcoin-v0.1-main"
+  command = "bash ./build_for_netlify.sh"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/_next/*"
+  to = "/_next/:splat"
+  status = 200
+  force = true
